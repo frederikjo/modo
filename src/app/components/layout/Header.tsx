@@ -1,6 +1,7 @@
 import { Search, Bell } from "lucide-react";
 import { Logo } from "../ui/Logo";
 import { ThemeToggle } from "../ui/ThemeToggle";
+import Link from "next/link";
 
 interface HeaderProps {
   isDark: boolean;
@@ -16,10 +17,12 @@ export const Header = ({ isDark, toggleTheme }: HeaderProps) => (
     }`}
   >
     <div className="flex items-center space-x-8">
-      <Logo isDark={isDark} />
+      <Link href="/dashboard">
+        <Logo isDark={isDark} />
+      </Link>
       <nav className="flex space-x-6">
-        <a
-          href="#"
+        <Link
+          href="/dashboard"
           className={`text-sm font-light hover:opacity-80 ${
             isDark
               ? "text-slate-400 hover:text-slate-200"
@@ -27,7 +30,17 @@ export const Header = ({ isDark, toggleTheme }: HeaderProps) => (
           }`}
         >
           Dashboard
-        </a>
+        </Link>
+        <Link
+          href="/habits"
+          className={`text-sm font-light hover:opacity-80 ${
+            isDark
+              ? "text-slate-400 hover:text-slate-200"
+              : "text-slate-500 hover:text-slate-700"
+          }`}
+        >
+          Habits
+        </Link>
         <a
           href="#"
           className={`text-sm font-normal ${
