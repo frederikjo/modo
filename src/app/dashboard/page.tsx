@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Heart, Target, Moon } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useTheme } from "@/hooks/useTheme";
+import { useWithings } from "@/hooks/useWithings";
 import { DashboardLayout } from "../components/dashboard/DashboardLayout";
 import { Header } from "../components/layout/Header";
 import { WellnessChart } from "../components/dashboard/WellnessChart";
@@ -12,6 +13,9 @@ import { DailyGoalsWidget } from "../components/dashboard/DailyGoalsWidget";
 import { CalendarWidget } from "../components/dashboard/CalendarWidget";
 import { MetricCard } from "../components/dashboard/MetricCard";
 import { RecentActivity } from "../components/dashboard/RecentActivity";
+import { WithingsConnection } from "../components/withings/WithingsConnection";
+import { WeightChart } from "../components/withings/WeightChart";
+import { WeightMetricCard } from "../components/withings/WeightMetricCard";
 import { User } from "@supabase/supabase-js";
 
 interface UserSettings {
@@ -22,12 +26,21 @@ interface UserSettings {
   created_at?: string;
   updated_at?: string;
 }
+
 export default function DashboardPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<User | null>(null);
   const [settings, setSettings] = useState<UserSettings | null>(null);
   const { isDark, toggleTheme } = useTheme();
+  const {
+    isConnected: withingsConnected,
+    weightData,
+    latestWeight,
+    weightTrend,
+    handleAuthCallback,
+  } = useWithings();
 
   useEffect(() => {
     const getUserAndSettings = async () => {
@@ -64,6 +77,33 @@ export default function DashboardPage() {
     getUserAndSettings();
   }, [router]);
 
+  // Handle Withings OAuth callback
+  useEffect(() => {
+    const withingsCode = searchParams?.get("withings_code");
+    const withingsError = searchParams?.get("withings_error");
+
+    if (withingsError) {
+      console.error("Withings connection error:", withingsError);
+      // You could show a toast notification here
+      return;
+    }
+
+    if (withingsCode) {
+      handleAuthCallback(withingsCode)
+        .then(() => {
+          console.log("Withings connected successfully");
+          // Remove the code from URL
+          router.replace("/dashboard");
+        })
+        .catch((error) => {
+          console.error(
+            "Failed to complete Withings connection:",
+            error
+          );
+        });
+    }
+  }, [searchParams, handleAuthCallback, router]);
+
   if (loading)
     return (
       <div
@@ -94,7 +134,20 @@ export default function DashboardPage() {
             <CalendarWidget isDark={isDark} />
           </div>
 
-          {/* Bottom Row */}
+          {/* Weight Integration Row */}
+          <div className="col-span-8">
+            {withingsConnected && weightData.length > 0 ? (
+              <WeightChart data={weightData} isDark={isDark} />
+            ) : (
+              <WithingsConnection isDark={isDark} />
+            )}
+          </div>
+
+          <div className="col-span-4">
+            <RecentActivity isDark={isDark} />
+          </div>
+
+          {/* Bottom Metrics Row */}
           <div className="col-span-3">
             <MetricCard
               title="Daily Steps"
@@ -118,6 +171,25 @@ export default function DashboardPage() {
           </div>
 
           <div className="col-span-3">
+            {withingsConnected ? (
+              <WeightMetricCard
+                latestWeight={latestWeight}
+                weightTrend={weightTrend}
+                isDark={isDark}
+              />
+            ) : (
+              <MetricCard
+                title="Sleep Score"
+                value="8.2h"
+                subtitle="Quality: Good"
+                icon={Moon}
+                color="bg-slate-700"
+                isDark={isDark}
+              />
+            )}
+          </div>
+
+          <div className="col-span-3">
             <MetricCard
               title="Sleep Score"
               value="8.2h"
@@ -126,10 +198,6 @@ export default function DashboardPage() {
               color="bg-slate-700"
               isDark={isDark}
             />
-          </div>
-
-          <div className="col-span-3">
-            <RecentActivity isDark={isDark} />
           </div>
         </div>
       </div>
